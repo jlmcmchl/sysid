@@ -108,7 +108,7 @@ model {
       }
       binaries.all {
         // Only build/run release version of tests
-        if (it.buildType.name.contains('debug')) {
+        if (it.buildType.name.contains('release')) {
           it.buildable = false
         }
         nativeUtils.useRequiredLibrary(it, "googletest_static")
@@ -197,7 +197,7 @@ model {
       }
     }
     $.testSuites.sysidGenerationIntegrationTest.binaries.each { bin ->
-      if (bin.buildable && bin.name.contains("release")) {
+      if (bin.buildable && bin.name.contains("debug")) {
         Task run = project.tasks.create("runGenerationIntegrationTests", Exec) {
           commandLine bin.tasks.install.runScriptFile.get().asFile.toString()
         }

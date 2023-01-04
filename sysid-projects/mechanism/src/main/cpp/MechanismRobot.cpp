@@ -83,28 +83,39 @@ void MechanismRobot::RobotPeriodic() {}
  * make sure to add them to the chooser code above as well.
  */
 void MechanismRobot::AutonomousInit() {
+  fmt::print("ai::init\n");
   m_logger.InitLogging();
+  fmt::print("ai::end\n");
 }
 
 /**
  * Outputs data in the format: timestamp, voltage, position, velocity
  */
 void MechanismRobot::AutonomousPeriodic() {
-  m_logger.Log(m_logger.MeasureVoltage(m_controllers, m_controllerNames),
+  fmt::print("ap::read\n");
+  auto voltage = m_logger.MeasureVoltage(m_controllers, m_controllerNames);
+  fmt::print("ap::log\n");
+  m_logger.Log(voltage,
                m_position(), m_rate());
+  fmt::print("ap::set\n");
   sysid::SetMotorControllers(m_logger.GetMotorVoltage(), m_controllers);
+  fmt::print("ap::end\n");
 }
 
 void MechanismRobot::TeleopInit() {}
 
 void MechanismRobot::TeleopPeriodic() {
+  fmt::print("tp::start\n");
   PushNTDiagnostics();
+  fmt::print("tp::end\n");
 }
 
 void MechanismRobot::DisabledInit() {
+  fmt::print("di::set\n");
   sysid::SetMotorControllers(0_V, m_controllers);
   fmt::print("Robot Disabled\n");
   m_logger.SendData();
+    fmt::print("di::end\n");
 }
 
 void MechanismRobot::SimulationPeriodic() {
@@ -123,13 +134,16 @@ void MechanismRobot::SimulationPeriodic() {
 }
 
 void MechanismRobot::DisabledPeriodic() {
+  fmt::print("dp::push\n");
   PushNTDiagnostics();
-}
+  fmt::print("dp::end\n");}
 
 void MechanismRobot::TestInit() {}
 
 void MechanismRobot::TestPeriodic() {
+  fmt::print("tp::push\n");
   PushNTDiagnostics();
+  fmt::print("tp::end\n");
 }
 
 void MechanismRobot::PushNTDiagnostics() {

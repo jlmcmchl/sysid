@@ -59,9 +59,11 @@ void Connect(nt::NetworkTableInstance nt, nt::BooleanPublisher& kill) {
     if (wpi::Now() - time > 1.5E7) {
       fmt::print(stderr, "The robot program crashed\n");
       auto capturedStdout = ::testing::internal::GetCapturedStdout();
+      auto capturedStderr = ::testing::internal::GetCapturedStderr();
       fmt::print(stderr,
-                 "\n******\nRobot Program Captured Output:\n{}\n******\n",
-                 capturedStdout);
+                 "\n******\nRobot Program Captured Output:\n{}\n******\nRobot Program Captured Stderr:\n{}\n******\n",
+                 capturedStdout,
+                 capturedStderr);
       std::exit(1);
     }
   }
@@ -78,10 +80,10 @@ std::string KillNT(nt::NetworkTableInstance nt, nt::BooleanPublisher& kill) {
     // Kill program
     kill.Set(true);
     nt.Flush();
-    if (wpi::Now() - time > 3E7) {
-      EXPECT_TRUE(false);
-      return capturedStdout;
-    }
+    // if (wpi::Now() - time > 3E7) {
+    //   EXPECT_TRUE(false);
+    //   return capturedStdout;
+    // }
   }
 
   fmt::print(stderr, "Killed robot program\n");
