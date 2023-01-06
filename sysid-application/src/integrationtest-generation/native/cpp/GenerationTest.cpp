@@ -18,6 +18,9 @@
 #include <wpi/StringMap.h>
 #include <wpi/fs.h>
 #include <wpi/timestamp.h>
+#include <wpinet/uv/Loop.h>
+#include <wpinet/uv/Process.h>
+#include <wpinet/uv/Pipe.h>
 
 #include "IntegrationUtils.h"
 #include "gtest/gtest.h"
@@ -76,6 +79,22 @@ class GenerationTest : public ::testing::Test {
  public:
   void Initialize(std::string_view directory) {
     m_nt = nt::NetworkTableInstance::GetDefault();
+
+    nt::AddLogger(nt::GetDefaultInstance(), 0, UINT_MAX, [](auto& event) {
+      if (auto conn = event.GetConnectionInfo()) {
+        fmt::print("[NT Client] Conn info: {} @ {}:{}; v{} Last update: {}\n", conn->remote_id, conn->remote_ip, conn->remote_port, conn->last_update, conn->protocol_version);
+      } else if (auto topic = event.GetTopicInfo()) {
+        fmt::print("[NT Client] Topic info: {} ({}): {}\n", topic->name, topic->type_str, topic->properties);
+      } else if (auto valueEvent = event.GetValueEventData()) {
+        fmt::print("[NT Client] Value info: {} ({}): {}\n", topic->name, topic->type_str, topic->properties);
+      } else if (auto logMessage = event.GetLogMessage()) {
+        fmt::print("[NT Client] {}: {} ({}:{})\n", logMessage->level, logMessage->message, logMessage->filename, logMessage->line);
+      }
+      // else if (auto timeSyncEvent = event.GetTimeSyncEventData()) {
+
+      // }
+    });
+
     m_kill =
         m_nt.GetTable("SmartDashboard")->GetBooleanTopic("SysIdKill").Publish();
     m_mechanism =
@@ -100,13 +119,13 @@ class GenerationTest : public ::testing::Test {
 
   void FindInLog(std::string_view str, std::string_view prefix = "Setup") {
     auto searchString = fmt::format("{} {}", prefix, str);
-    fmt::print(stderr, "Searching for: {}\n", searchString);
+    fmt::print("Searching for: {}\n", searchString);
     bool found = wpi::contains(m_logContent, searchString);
     EXPECT_TRUE(found);
 
     // Prints out stored output to help with debugging
     if (!found) {
-      fmt::print(stderr, "******\nOutput Searched Through:\n{}\n******\n",
+      fmt::print("******\nOutput Searched Through:\n{}\n******\n",
                  m_logContent);
     }
   }
@@ -189,11 +208,13 @@ class GenerationTest : public ::testing::Test {
   }
 
   void Run() {
-    LaunchSim(m_directory);
+    std::cout << "GenerationTest: " << wpi::Now() << std::endl;
+    std::shared_ptr<wpi::uv::Pipe> pipe = wpi::uv::Pipe::Create(wpi::uv::Loop::GetDefault(), true);
+    std::shared_ptr<wpi::uv::Process> sim = LaunchSim(m_directory, *pipe);
 
     Connect(m_nt, m_kill);
 
-    fmt::print(stderr,
+    fmt::print(
                "Waiting for 250 ms after connecting to see if program doesn't "
                "crash\n");
     // Makes sure the program didn't crash after 250ms
@@ -201,14 +222,28 @@ class GenerationTest : public ::testing::Test {
     ASSERT_TRUE(m_nt.IsConnected());
 
     // Wait longer for output to be flushed
-    fmt::print(stderr, "Post test sleep (2s)\n");
+    fmt::print("Post test sleep (2s)\n");
     std::this_thread::sleep_for(2s);
 
-    m_logContent = KillNT(m_nt, m_kill);
+    KillNT(m_nt, m_kill);
+
+    // TODO: read process return code
+    // int result = popen.wait();
+
+    // // Exit the test if we could not install the robot program.
+    // if (result != 0) {
+    //   fmt::print("The robot program exited with code {}.\n", process_ret);
+    //   // std::exit(1);
+    // }
+
+    // TODO: read process stdout
+    // m_logContent = pipe.rdbuf();
   }
 
   void LaunchAndConnect() {
-    LaunchSim(m_directory);
+    std::shared_ptr<wpi::uv::Pipe> pipe = wpi::uv::Pipe::Create(wpi::uv::Loop::GetDefault(), true);
+    std::shared_ptr<wpi::uv::Process> sim = LaunchSim(m_directory, *pipe);
+
     Connect(m_nt, m_kill);
   }
 
@@ -272,7 +307,7 @@ TEST_F(GenerationTest, GeneralMechanism) {
         wpi::SmallVector<sysid::HardwareType, 3>(size, motorController);
     for (auto&& encoder : motorControllerEncoderMap[motorController.name]) {
       m_settings.encoderType = encoder;
-      fmt::print(stderr, "Testing: {} and {}\n", motorController.name,
+      fmt::print("Testing: {} and {}\n", motorController.name,
                  encoder.name);
       auto json = m_manager.Generate(size);
       sysid::SaveFile(json.dump(), m_jsonPath);
@@ -306,7 +341,7 @@ TEST_F(GenerationTest, Drivetrain) {
     m_settings.gyro = gyro;
     for (auto&& gyroCtor : gyroCtorMap[gyro.name]) {
       m_settings.gyroCtor = gyroCtor;
-      fmt::print(stderr, "Testing: {} using {}\n", gyro.name, gyroCtor);
+      fmt::print("Testing: {} using {}\n", gyro.name, gyroCtor);
       auto json = m_manager.Generate(size);
       sysid::SaveFile(json.dump(), m_jsonPath);
 

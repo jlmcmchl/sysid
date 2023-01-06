@@ -10,6 +10,7 @@
 #include <exception>
 #include <string>
 #include <string_view>
+#include <iostream>
 
 #include <fmt/format.h>
 #include <frc/ADXRS450_Gyro.h>
@@ -17,6 +18,7 @@
 #include <frc/simulation/DriverStationSim.h>
 #include <frc/smartdashboard/SmartDashboard.h>
 #include <wpi/StringExtras.h>
+#include <wpi/timestamp.h>
 
 #include "sysid/generation/SysIdSetup.h"
 
@@ -102,7 +104,25 @@ DriveRobot::DriveRobot() : frc::TimedRobot(5_ms) {
 #endif
 }
 
-void DriveRobot::RobotInit() {}
+void DriveRobot::RobotInit() {
+    nt::AddLogger(nt::GetDefaultInstance(), 0, UINT_MAX, [](auto& event) {
+    if (auto conn = event.GetConnectionInfo()) {
+      std::cerr << fmt::format("[NT Server] Conn info: {} @ {}:{}; v{} Last update: {}", conn->remote_id, conn->remote_ip, conn->remote_port, conn->last_update, conn->protocol_version) << std::endl;
+    } else if (auto topic = event.GetTopicInfo()) {
+      std::cerr << fmt::format("[NT Server] Topic info: {} ({}): {}", topic->name, topic->type_str, topic->properties) << std::endl;
+    } else if (auto valueEvent = event.GetValueEventData()) {
+      // std::cerr << fmt::format("[NT Server] Value info: {} ({}): {}", topic->name, topic->type_str, topic->properties) << std::endl;
+    } else if (auto logMessage = event.GetLogMessage()) {
+      std::cerr << fmt::format("[NT Server] {}: {} ({}:{})", logMessage->level, logMessage->message, logMessage->filename, logMessage->line) << std::endl;
+    }
+    // else if (auto timeSyncEvent = event.GetTimeSyncEventData()) {
+
+    // }
+  });
+
+    std::cerr << "DriveTest: " << wpi::Now() << std::endl;
+
+}
 
 void DriveRobot::RobotPeriodic() {}
 

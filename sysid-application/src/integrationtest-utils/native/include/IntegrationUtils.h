@@ -9,6 +9,7 @@
 
 #include <networktables/BooleanTopic.h>
 #include <networktables/NetworkTableInstance.h>
+#include <wpinet/uv/Process.h>
 
 #include "sysid/Util.h"
 
@@ -18,7 +19,7 @@
  * @param projectDirectory the relative path of the robot project folder from
  * the root directory.
  */
-void LaunchSim(std::string_view projectDirectory);
+std::shared_ptr<wpi::uv::Process> LaunchSim(std::string_view projectDirectory, wpi::uv::Pipe &pipe);
 
 /**
  * Connects to a Simulation NT Entry and configures the kill variable to not
